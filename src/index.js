@@ -1,0 +1,116 @@
+import _ from 'lodash';
+
+const defaultConfig = {
+  promiseFieldName: 'promise',
+  functionFieldName: 'function',
+  typesFieldName: 'types',
+  callbacksFieldName: 'callbacks',
+  typesNames: {
+    start: 'start',
+    success: 'success',
+    error: 'error',
+  },
+  callbacksNames: {
+    start: 'start',
+    success: 'success',
+    error: 'error',
+  },
+};
+
+export default function createReduxPromiseMiddleware(additionalData, userConfig) {
+  const config = _.merge({}, defaultConfig, userConfig);
+
+  return ({ getState, dispatch }) => next => action => {
+    if (action.promise || action.function) {
+      const promise = action[config.promiseFieldName];
+
+      const func = action[config.functionFieldName];
+
+      const type = action.type;
+
+      let types;
+      if (action[config.typesFieldName]) {
+        if (Array.isArray(action[config.typesFieldName])) {
+          types = {
+            start: action[config.typesFieldName][0],
+            success: action[config.typesFieldName][1],
+            error: action[config.typesFieldName][2],
+          };
+        } else {
+          types = {
+            start: action[config.typesFieldName][config.typesNames.start],
+            success: action[config.typesFieldName][config.typesNames.success],
+            error: action[config.typesFieldName][config.typesNames.error],
+          };
+        }
+      }
+
+      let callbacks;
+      if (action[config.callbacksFieldName]) {
+        if (Array.isArray(action[config.callbacksFieldName])) {
+          callbacks = {
+            start: action[config.callbacksFieldName][0],
+            success: action[config.callbacksFieldName][1],
+            error: action[config.callbacksFieldName][2],
+          };
+        } else {
+          callbacks = {
+            start: action[config.callbacksFieldName][config.callbacksNames.start],
+            success: action[config.callbacksFieldName][config.callbacksNames.success],
+            error: action[config.callbacksFieldName][config.callbacksNames.error],
+          };
+        }
+      }
+
+      const rest = _.omit(
+        action,
+        [config.promiseFieldName, config.functionFieldName, config.typesFieldName, config.callbacksFieldName, 'type']
+      );
+
+      if (types) {
+        next({ type: types.start, ...rest });
+      }
+      if (callbacks && callbacks.start) {
+        callbacks.start(rest);
+      }
+
+      if (promise) {
+        if (func) {
+          // if we have both promise and function we call that function anyway
+          func({ getState, dispatch, ...additionalData });
+        }
+        return promise({ getState, dispatch, ...additionalData }).then(
+          result => {
+            if (callbacks && callbacks.success) {
+              callbacks.success({ ...rest, result });
+            }
+            return next({ ...rest, result, type: types ? types.success : action.type })
+          },
+          error => {
+            if (callbacks && callbacks.error) {
+              callbacks.error({ ...rest, error });
+            }
+            return types ? next({ ...rest, error, type: types.error }) : null;
+          }
+        );
+      } else {
+        let result;
+        try {
+          result = func({ getState, dispatch, ...additionalData });
+          if (callbacks && callbacks.success) {
+            callbacks.success({ ...rest, result });
+          }
+          next({ ...rest, result, type: types ? types.success : type });
+        } catch (error) {
+          if (callbacks && callbacks.error) {
+            callbacks.error({ ...rest, error });
+          }
+          if (types) {
+            next({ ...rest, error, type: types.error });
+          }
+        }
+      }
+    }
+    next(action);
+  }
+}
