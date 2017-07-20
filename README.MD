@@ -1,4 +1,4 @@
-# Library boilerplate
+# redux-better-promise
 > Simple and powerful redux middleware that supports async side-effects (and much more)
 
 Redux middleware that will allow you to:
