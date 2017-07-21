@@ -21,7 +21,7 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
   const config = _.merge({}, defaultConfig, userConfig);
 
   return ({ getState, dispatch }) => next => action => {
-    if (action.promise || action.function) {
+    if (action[config.promiseFieldName] || action[config.functionFieldName]) {
       const promise = action[config.promiseFieldName];
 
       const func = action[config.functionFieldName];
@@ -75,10 +75,17 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
       }
 
       if (promise) {
+        if (typeof promise !== 'function') {
+          throw new Error(`${config.promiseFieldName} must be a function returning promise`);
+        }
         if (func) {
+          if (typeof func !== 'function') {
+            throw new Error(`${config.functionFieldName} must be a function`);
+          }
           // if we have both promise and function we call that function anyway
           func({ getState, dispatch, ...additionalData });
         }
+
         return promise({ getState, dispatch, ...additionalData }).then(
           result => {
             if (callbacks && callbacks.success) {
@@ -94,6 +101,9 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
           }
         );
       } else {
+        if (typeof func !== 'function') {
+          throw new Error(`${config.functionFieldName} must be a function`);
+        }
         let result;
         try {
           result = func({ getState, dispatch, ...additionalData });
