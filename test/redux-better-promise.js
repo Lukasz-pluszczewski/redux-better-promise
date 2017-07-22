@@ -8,21 +8,9 @@ chai.use(chaiAsPromised);
 
 import createReduxPromise from '../src/index';
 
-const initialState = {
-  obj1: {
-    field1: 'val1',
-    field2: 'val2',
-    field3: 'val3',
-  },
-  arr1: [
-    'el1',
-    'el2',
-  ],
-};
-
 const create = middleware => {
   const store = {
-    getState: sinon.stub().returns(initialState),
+    getState: sinon.stub(),
     dispatch: sinon.spy(),
   };
   const next = sinon.spy();
@@ -32,6 +20,8 @@ const create = middleware => {
   return { store, next, invoke };
 };
 
+const errorThrown = { message: 'error' };
+
 const START = 'START';
 const SUCCESS = 'SUCCESS';
 const ERROR = 'ERROR';
@@ -40,9 +30,9 @@ const startCallback = sinon.spy();
 const successCallback = sinon.spy();
 const errorCallback = sinon.spy();
 const promiseResolve = sinon.stub().resolves('result');
-const promiseRejects = sinon.stub().rejects('error');
+const promiseRejects = sinon.stub().returns(Promise.reject('error'));
 const funcOk = sinon.stub().returns('result');
-const funcError = sinon.stub().throws({ message: 'error' });
+const funcError = sinon.stub().throws(errorThrown);
 const payload = 'payload';
 
 describe('redux-better-promise', () => {
@@ -169,48 +159,337 @@ describe('redux-better-promise', () => {
       const { next, invoke } = create(createReduxPromise());
 
       invoke({
-        types: [START, SUCCESS, ERROR],
-        callbacks: [startCallback, successCallback, errorCallback],
+        types: [START, null, null],
         promise: promiseResolve,
       });
 
       setTimeout(() => {
-        expect(next).to.be.calledTwice;
-        expect(next.getCall(0)).to.have.been.calledBefore(promiseResolve);
+        expect(next).to.have.been.calledOnce;
+        expect(promiseResolve).to.have.been.calledOnce;
+        expect(next).to.have.been.calledBefore(promiseResolve); // particular call should be checked but `expect(next.getCall(0))` does not work here :/
         expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START });
         done();
       }, 0);
     });
-    it('should dispatch given SUCCESS action (as object field or array element) after "promise" resolves');
-    it('should dispatch given ERROR action (as object field or array element) after "promise" rejects');
+    it('should dispatch given SUCCESS action (as object field or array element) after "promise" resolves', function(done) {
+      const { next, invoke } = create(createReduxPromise());
 
-    it('should not dispatch given SUCCESS action (as object field or array element) after "promise" rejects');
-    it('should not dispatch given ERROR action (as object field or array element) after "promise" resolves');
+      invoke({
+        types: [null, SUCCESS, null],
+        promise: promiseResolve,
+      });
 
-    it('should dispatch given START action (as object field or array element) before calling "function"');
-    it('should dispatch given SUCCESS action (as object field or array element) after calling "function"');
-    it('should dispatch given ERROR action (as object field or array element) after "function" throws an error');
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(promiseResolve).to.have.been.calledOnce;
+        expect(next).to.have.been.calledAfter(promiseResolve);
+        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 0);
+    });
+    it('should dispatch given ERROR action (as object field or array element) after "promise" rejects', function(done) {
+      const { next, invoke } = create(createReduxPromise());
 
-    it('should not dispatch given SUCCESS action (as object field or array element) after "function" throws an error');
-    it('should not dispatch given ERROR action (as object field or array element) after calling "function"');
+      invoke({
+        types: [null, null, ERROR],
+        promise: promiseRejects,
+      });
 
-    it('should add any additional data from action definition to START, SUCCESS or ERROR actions');
-    it('should add any additional data from action definition to START, SUCCESS or ERROR callbacks');
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(promiseRejects).to.have.been.calledOnce;
+        expect(next).to.have.been.calledAfter(promiseRejects);
+        expect(next).to.have.been.calledWithMatch({ type: ERROR, error: 'error' });
+        done();
+      }, 0);
+    });
 
-    it('should trigger START callback (as object field or array element) together with START action');
-    it('should trigger SUCCESS callback (as object field or array element) together with SUCCESS action');
-    it('should trigger ERROR callback (as object field or array element) together with ERROR action');
+    it('should not dispatch given SUCCESS action (as object field or array element) after "promise" rejects', function(done) {
+      const { next, invoke } = create(createReduxPromise());
 
-    it('should dispatch given ACTION (from type field) after "promise" resolves');
-    it('should dispatch given ACTION (from type field) after calling "function"');
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseRejects,
+      });
 
-    it('should not dispatch given ACTION (from type field) after "promise" rejects');
-    it('should not dispatch given ACTION (from type field) after "function" throws an error');
+      setTimeout(() => {
+        expect(next).to.have.been.calledTwice;
+        expect(promiseRejects).to.have.been.calledOnce;
+        expect(next.getCall(1)).to.not.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 0);
+    });
+    it('should not dispatch given ERROR action (as object field or array element) after "promise" resolves', function(done) {
+      const { next, invoke } = create(createReduxPromise());
 
-    it('should call "function" with correct parameters anyway if "promise" field is provided');
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+      });
 
-    it('should throw an error when "types" field has wrong type');
-    it('should throw an error when "callbacks" field has wrong type');
-    it('should throw an error when there is neither "type" nor "types" field in the action');
+      setTimeout(() => {
+        expect(next).to.have.been.calledTwice;
+        expect(promiseResolve).to.have.been.calledOnce;
+        expect(next.getCall(1)).to.not.have.been.calledWithMatch({ type: ERROR, error: 'error' });
+        done();
+      }, 0);
+    });
+
+    it('should dispatch given START action (as object field or array element) before calling "function"', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, null, null],
+        function: funcOk,
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(funcOk).to.have.been.calledOnce;
+        expect(next).to.have.been.calledBefore(funcOk); // particular call should be checked but `expect(next.getCall(0))` does not work here :/
+        expect(next).to.have.been.calledWithMatch({ type: START });
+        done();
+      }, 0);
+    });
+    it('should dispatch given SUCCESS action (as object field or array element) after calling "function"', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [null, SUCCESS, null],
+        function: funcOk,
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(funcOk).to.have.been.calledOnce;
+        expect(next).to.have.been.calledAfter(funcOk);
+        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 0);
+    });
+    it('should dispatch given ERROR action (as object field or array element) after "function" throws an error', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [null, null, ERROR],
+        function: funcError,
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(funcError).to.have.been.calledOnce;
+        expect(next).to.have.been.calledAfter(funcError);
+        expect(next).to.have.been.calledWithMatch({ type: ERROR, error: errorThrown });
+        done();
+      }, 0);
+    });
+
+    it('should not dispatch given SUCCESS action (as object field or array element) after "function" throws an error', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        function: funcError,
+      });
+
+      setTimeout(() => {
+        expect(next).to.be.calledTwice;
+        expect(funcError).to.have.been.calledOnce;
+        expect(next).to.not.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 0);
+    });
+    it('should not dispatch given ERROR action (as object field or array element) after calling "function"', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        function: funcOk,
+      });
+
+      setTimeout(() => {
+        expect(next).to.be.calledTwice;
+        expect(funcOk).to.have.been.calledOnce;
+        expect(next).to.not.have.been.calledWithMatch({ type: ERROR, error: 'error' });
+        done();
+      }, 0);
+    });
+
+    it('should trigger START, SUCCESS and ERROR callbacks', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        callbacks: [startCallback, successCallback, null],
+        promise: promiseResolve,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        callbacks: [null, null, errorCallback],
+        promise: promiseRejects,
+      });
+
+      setTimeout(() => {
+        expect(startCallback).to.have.been.calledOnce;
+        expect(successCallback).to.have.been.calledOnce;
+        expect(errorCallback).to.have.been.calledOnce;
+        done();
+      }, 0);
+    });
+
+    it('should add any additional data from action definition to START, SUCCESS or ERROR actions', function(done) {
+      const { store, next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, null],
+        promise: promiseResolve,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      invoke({
+        types: [null, null, ERROR],
+        promise: promiseRejects,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledThrice;
+        expect(next).to.have.been.calledWithMatch({ type: START, payload, additionalField: 'additionalValue' });
+        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload, additionalField: 'additionalValue' });
+        expect(next).to.have.been.calledWithMatch({ type: ERROR, error: 'error', payload, additionalField: 'additionalValue' });
+        done();
+      }, 0);
+    });
+    it('should add any additional data from action definition to START, SUCCESS or ERROR callbacks', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        callbacks: [startCallback, successCallback, null],
+        promise: promiseResolve,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        callbacks: [null, null, errorCallback],
+        promise: promiseRejects,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      setTimeout(() => {
+        expect(startCallback).to.have.been.calledOnce;
+        expect(startCallback).to.have.been.calledWithMatch({ payload, additionalField: 'additionalValue', });
+        expect(successCallback).to.have.been.calledOnce;
+        expect(successCallback).to.have.been.calledWithMatch({ result: 'result', payload, additionalField: 'additionalValue' });
+        expect(errorCallback).to.have.been.calledOnce;
+        expect(errorCallback).to.have.been.calledWithMatch({ error: 'error', payload, additionalField: 'additionalValue' });
+        done();
+      }, 0);
+    });
+
+    it('should dispatch given ACTION (from type field) after "promise" resolves', function(done) {
+      const { store, next, invoke } = create(createReduxPromise());
+
+      invoke({
+        type: SUCCESS,
+        promise: promiseResolve,
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 0);
+    });
+    it('should dispatch given ACTION (from type field) after calling "function"', function(done) {
+      const { store, next, invoke } = create(createReduxPromise());
+
+      invoke({
+        type: SUCCESS,
+        function: funcOk,
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledOnce;
+        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 0);
+    });
+
+    it('should not dispatch given ACTION (from type field) after "promise" rejects', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        type: SUCCESS,
+        promise: promiseRejects,
+      });
+
+      setTimeout(() => {
+        expect(next).to.not.have.been.called;
+        done();
+      }, 0);
+    });
+    it('should not dispatch given ACTION (from type field) after "function" throws an error', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        type: SUCCESS,
+        function: funcError,
+      });
+
+      setTimeout(() => {
+        expect(next).to.not.have.been.called;
+        done();
+      }, 0);
+    });
+
+    it('should call "function" with correct parameters anyway if "promise" field is provided', function(done) {
+      const { store, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        function: funcOk, // if a function throws an error in this situation it will not be caught!
+      });
+
+      setTimeout(() => {
+        expect(funcOk).to.have.been.calledOnce;
+        expect(funcOk).to.have.been.calledWithMatch({ getState: store.getState, dispatch: store.dispatch });
+        done();
+      }, 0);
+    });
+
+    it('should throw an error when "types" field has wrong type', () => {
+      const { invoke } = create(createReduxPromise());
+
+      expect( () => invoke({
+        types: () => 'Hello! I have wrong type :)',
+        promise: promiseResolve,
+      }) ).to.throw(Error);
+    });
+    it('should throw an error when "callbacks" field has wrong type', () => {
+      const { invoke } = create(createReduxPromise());
+
+      expect( () => invoke({
+        types: [START, SUCCESS, ERROR],
+        callbacks: () => 'Hello! I have wrong type :)',
+        promise: promiseResolve,
+      }) ).to.throw(Error);
+    });
+    it('should throw an error when there is neither "type" nor "types" field in the action', () => {
+      const { invoke } = create(createReduxPromise());
+
+      expect( () => invoke({
+        promise: promiseResolve,
+      }) ).to.throw(Error);
+    });
   });
 });
