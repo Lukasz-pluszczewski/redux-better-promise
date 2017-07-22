@@ -26,9 +26,9 @@ const START = 'START';
 const SUCCESS = 'SUCCESS';
 const ERROR = 'ERROR';
 
-const startCallback = sinon.spy();
-const successCallback = sinon.spy();
-const errorCallback = sinon.spy();
+const startHook = sinon.spy();
+const successHook = sinon.spy();
+const errorHook = sinon.spy();
 const promiseResolve = sinon.stub().resolves('result');
 const promiseRejects = sinon.stub().returns(Promise.reject('error'));
 const funcOk = sinon.stub().returns('result');
@@ -37,9 +37,9 @@ const payload = 'payload';
 
 describe('redux-better-promise', () => {
   beforeEach(() => {
-    startCallback.reset();
-    successCallback.reset();
-    errorCallback.reset();
+    startHook.reset();
+    successHook.reset();
+    errorHook.reset();
     promiseResolve.resetHistory();
     promiseRejects.resetHistory();
     funcOk.resetHistory();
@@ -52,7 +52,7 @@ describe('redux-better-promise', () => {
 
       invoke({
         types: [START, SUCCESS, ERROR],
-        callbacks: [startCallback, successCallback, errorCallback],
+        hooks: [startHook, successHook, errorHook],
         promise: promiseResolve,
         payload,
       });
@@ -63,11 +63,11 @@ describe('redux-better-promise', () => {
         expect(next).to.have.been.calledTwice;
         expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START, payload });
         expect(next.getCall(1)).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(startCallback).to.have.been.calledOnce;
-        expect(startCallback).to.have.been.calledWithMatch({ payload });
-        expect(successCallback).to.have.been.calledOnce;
-        expect(successCallback).to.have.been.calledWithMatch({ result: 'result', payload });
-        expect(errorCallback).to.not.have.been.called;
+        expect(startHook).to.have.been.calledOnce;
+        expect(startHook).to.have.been.calledWithMatch({ payload });
+        expect(successHook).to.have.been.calledOnce;
+        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload });
+        expect(errorHook).to.not.have.been.called;
         done();
       }, 0); // required to run after all synchronous code (and after previous async code, like promises inside the middleware)
     });
@@ -76,13 +76,13 @@ describe('redux-better-promise', () => {
         promiseFieldName: 'promise1',
         functionFieldName: 'function1',
         typesFieldName: 'types1',
-        callbacksFieldName: 'callbacks1',
+        hooksFieldName: 'hooks1',
         typesNames: {
           start: 'start1',
           success: 'success1',
           error: 'error1',
         },
-        callbacksNames: {
+        hooksNames: {
           start: 'start1',
           success: 'success1',
           error: 'error1',
@@ -91,7 +91,7 @@ describe('redux-better-promise', () => {
 
       invoke({
         types1: { start1: START, success1: SUCCESS, error1: ERROR },
-        callbacks1: { start1: startCallback, success1: successCallback, error1: errorCallback },
+        hooks1: { start1: startHook, success1: successHook, error1: errorHook },
         promise1: promiseResolve,
         function1: funcOk,
         payload,
@@ -105,11 +105,11 @@ describe('redux-better-promise', () => {
         expect(next).to.have.been.calledTwice;
         expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START, payload });
         expect(next.getCall(1)).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(startCallback).to.have.been.calledOnce;
-        expect(startCallback).to.have.been.calledWithMatch({ payload });
-        expect(successCallback).to.have.been.calledOnce;
-        expect(successCallback).to.have.been.calledWithMatch({ result: 'result', payload });
-        expect(errorCallback).to.not.have.been.called;
+        expect(startHook).to.have.been.calledOnce;
+        expect(startHook).to.have.been.calledWithMatch({ payload });
+        expect(successHook).to.have.been.calledOnce;
+        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload });
+        expect(errorHook).to.not.have.been.called;
         done();
       }, 0);
     });
@@ -315,12 +315,12 @@ describe('redux-better-promise', () => {
       }, 0);
     });
 
-    it('should trigger START, SUCCESS and ERROR callbacks', function(done) {
+    it('should trigger START, SUCCESS and ERROR hooks', function(done) {
       const { next, invoke } = create(createReduxPromise());
 
       invoke({
         types: [START, SUCCESS, ERROR],
-        callbacks: [startCallback, successCallback, null],
+        hooks: [startHook, successHook, null],
         promise: promiseResolve,
         payload,
         additionalField: 'additionalValue',
@@ -328,14 +328,14 @@ describe('redux-better-promise', () => {
 
       invoke({
         types: [START, SUCCESS, ERROR],
-        callbacks: [null, null, errorCallback],
+        hooks: [null, null, errorHook],
         promise: promiseRejects,
       });
 
       setTimeout(() => {
-        expect(startCallback).to.have.been.calledOnce;
-        expect(successCallback).to.have.been.calledOnce;
-        expect(errorCallback).to.have.been.calledOnce;
+        expect(startHook).to.have.been.calledOnce;
+        expect(successHook).to.have.been.calledOnce;
+        expect(errorHook).to.have.been.calledOnce;
         done();
       }, 0);
     });
@@ -365,12 +365,12 @@ describe('redux-better-promise', () => {
         done();
       }, 0);
     });
-    it('should add any additional data from action definition to START, SUCCESS or ERROR callbacks', function(done) {
+    it('should add any additional data from action definition to START, SUCCESS or ERROR hooks', function(done) {
       const { next, invoke } = create(createReduxPromise());
 
       invoke({
         types: [START, SUCCESS, ERROR],
-        callbacks: [startCallback, successCallback, null],
+        hooks: [startHook, successHook, null],
         promise: promiseResolve,
         payload,
         additionalField: 'additionalValue',
@@ -378,19 +378,19 @@ describe('redux-better-promise', () => {
 
       invoke({
         types: [START, SUCCESS, ERROR],
-        callbacks: [null, null, errorCallback],
+        hooks: [null, null, errorHook],
         promise: promiseRejects,
         payload,
         additionalField: 'additionalValue',
       });
 
       setTimeout(() => {
-        expect(startCallback).to.have.been.calledOnce;
-        expect(startCallback).to.have.been.calledWithMatch({ payload, additionalField: 'additionalValue', });
-        expect(successCallback).to.have.been.calledOnce;
-        expect(successCallback).to.have.been.calledWithMatch({ result: 'result', payload, additionalField: 'additionalValue' });
-        expect(errorCallback).to.have.been.calledOnce;
-        expect(errorCallback).to.have.been.calledWithMatch({ error: 'error', payload, additionalField: 'additionalValue' });
+        expect(startHook).to.have.been.calledOnce;
+        expect(startHook).to.have.been.calledWithMatch({ payload, additionalField: 'additionalValue', });
+        expect(successHook).to.have.been.calledOnce;
+        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload, additionalField: 'additionalValue' });
+        expect(errorHook).to.have.been.calledOnce;
+        expect(errorHook).to.have.been.calledWithMatch({ error: 'error', payload, additionalField: 'additionalValue' });
         done();
       }, 0);
     });
@@ -475,12 +475,12 @@ describe('redux-better-promise', () => {
         promise: promiseResolve,
       }) ).to.throw(Error);
     });
-    it('should throw an error when "callbacks" field has wrong type', () => {
+    it('should throw an error when "hooks" field has wrong type', () => {
       const { invoke } = create(createReduxPromise());
 
       expect( () => invoke({
         types: [START, SUCCESS, ERROR],
-        callbacks: () => 'Hello! I have wrong type :)',
+        hooks: () => 'Hello! I have wrong type :)',
         promise: promiseResolve,
       }) ).to.throw(Error);
     });

@@ -4,13 +4,13 @@ const defaultConfig = {
   promiseFieldName: 'promise',
   functionFieldName: 'function',
   typesFieldName: 'types',
-  callbacksFieldName: 'callbacks',
+  hooksFieldName: 'hooks',
   typesNames: {
     start: 'start',
     success: 'success',
     error: 'error',
   },
-  callbacksNames: {
+  hooksNames: {
     start: 'start',
     success: 'success',
     error: 'error',
@@ -55,35 +55,35 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
         throw new Error('You must provide type or types field');
       }
 
-      let callbacks;
-      if (action[config.callbacksFieldName]) {
-        if (Array.isArray(action[config.callbacksFieldName])) {
-          callbacks = {
-            start: action[config.callbacksFieldName][0],
-            success: action[config.callbacksFieldName][1],
-            error: action[config.callbacksFieldName][2],
+      let hooks;
+      if (action[config.hooksFieldName]) {
+        if (Array.isArray(action[config.hooksFieldName])) {
+          hooks = {
+            start: action[config.hooksFieldName][0],
+            success: action[config.hooksFieldName][1],
+            error: action[config.hooksFieldName][2],
           };
-        } else if (_.isPlainObject(action[config.callbacksFieldName])) {
-          callbacks = {
-            start: action[config.callbacksFieldName][config.callbacksNames.start],
-            success: action[config.callbacksFieldName][config.callbacksNames.success],
-            error: action[config.callbacksFieldName][config.callbacksNames.error],
+        } else if (_.isPlainObject(action[config.hooksFieldName])) {
+          hooks = {
+            start: action[config.hooksFieldName][config.hooksNames.start],
+            success: action[config.hooksFieldName][config.hooksNames.success],
+            error: action[config.hooksFieldName][config.hooksNames.error],
           };
         } else {
-          throw new Error(`${config.callbacksFieldName} must be an array or plain object`);
+          throw new Error(`${config.hooksFieldName} must be an array or plain object`);
         }
       }
 
       const rest = _.omit(
         action,
-        [config.promiseFieldName, config.functionFieldName, config.typesFieldName, config.callbacksFieldName, 'type']
+        [config.promiseFieldName, config.functionFieldName, config.typesFieldName, config.hooksFieldName, 'type']
       );
 
       if (types && types.start) {
         next({ type: types.start, ...rest });
       }
-      if (callbacks && callbacks.start) {
-        callbacks.start(rest);
+      if (hooks && hooks.start) {
+        hooks.start(rest);
       }
 
       if (promise) {
@@ -99,16 +99,16 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
         }
         return promise({ getState, dispatch, ...additionalData }).then(
           result => {
-            if (callbacks && callbacks.success) {
-              callbacks.success({ ...rest, result });
+            if (hooks && hooks.success) {
+              hooks.success({ ...rest, result });
             }
             return (types && types.success) || type
               ? next({ ...rest, result, type: types ? types.success : action.type })
               : null;
           },
           error => {
-            if (callbacks && callbacks.error) {
-              callbacks.error({ ...rest, error });
+            if (hooks && hooks.error) {
+              hooks.error({ ...rest, error });
             }
             return types && types.error ? next({ ...rest, error, type: types.error }) : null;
           }
@@ -120,16 +120,16 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
         let result;
         try {
           result = func({ getState, dispatch, ...additionalData });
-          // now errors thrown in success callback and next() function will be caught as well. This is unexpected behaviour and should be changed in the future.
-          if (callbacks && callbacks.success) {
-            callbacks.success({ ...rest, result });
+          // now errors thrown in success hook and next() function will be caught as well. This is unexpected behaviour and should be changed in the future.
+          if (hooks && hooks.success) {
+            hooks.success({ ...rest, result });
           }
           if ((types && types.success) || type) {
             next({...rest, result, type: types ? types.success : type});
           }
         } catch (error) {
-          if (callbacks && callbacks.error) {
-            callbacks.error({ ...rest, error });
+          if (hooks && hooks.error) {
+            hooks.error({ ...rest, error });
           }
           if (types && types.error) {
             next({ ...rest, error, type: types.error });
