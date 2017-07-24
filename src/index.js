@@ -17,8 +17,86 @@ const defaultConfig = {
   },
 };
 
+class StartActionType {}
+class SuccessActionType {}
+class ErrorActionType {}
+class FinishActionType {}
+
+export const actionTypes = {
+  start: new StartActionType(),
+  success: new SuccessActionType(),
+  error: new ErrorActionType(),
+  finish: new FinishActionType(),
+};
+
+const checkActionType = (actionType, type, params) => {
+  if (actionType instanceof StartActionType) {
+    return type === 'start';
+  } else if (actionType instanceof SuccessActionType) {
+    return type === 'success';
+  } else if (actionType instanceof ErrorActionType) {
+    return type === 'error';
+  } else if (actionType instanceof FinishActionType) {
+    return type === 'error' || type === 'success';
+  } else if (_.isFunction(actionType)) {
+    const { type, ...rest } = params;
+    return actionType(type, rest);
+  } else if (_.isRegExp(actionType)) {
+    return actionType.test(params.type);
+  } else if (typeof actionType === 'string') {
+    return actionType === params.type;
+  } else if (Array.isArray(actionType)) {
+    let match = false;
+    actionType.forEach(partType => {
+      if (checkActionType(partType, type, params)) {
+        match = true;
+      }
+    });
+    return match;
+  }
+};
+
+const checkActionTypes = (actionType, actionTypeExclude, type, params) => {
+  if (actionTypeExclude) {
+    const excluded = checkActionType(actionTypeExclude, type, params);
+    if (!actionType) {
+      return !excluded;
+    }
+    if (excluded) {
+      return false;
+    }
+  }
+  return checkActionType(actionType, type, params);
+};
+
+const createCallGlobalHooks = (hooks = []) => {
+  const hookCaller = {
+    call: (type, params) => {
+      hooks.forEach(hook => {
+        if (_.isFunction(hook)) {
+          hook(params);
+        } else if (checkActionTypes(hook.actionType, hook.actionTypeExclude, type, params)) {
+          hook.hook(params);
+        }
+      });
+    },
+    start: params => {
+      hookCaller.call('start', params);
+    },
+    success: params => {
+      hookCaller.call('success', params);
+    },
+    error: params => {
+      hookCaller.call('error', params);
+    },
+  };
+
+  return hookCaller;
+};
+
 export default function createReduxPromiseMiddleware(additionalData, userConfig) {
   const config = _.merge({}, defaultConfig, userConfig);
+  const callGlobalHooks = createCallGlobalHooks(config.hooks);
 
   return ({ getState, dispatch }) => next => action => {
     // checking if middleware can handle this kind of action
@@ -81,6 +159,7 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
 
       if (types && types.start) {
         next({ type: types.start, ...rest });
+        callGlobalHooks.start({ type: types.start, ...rest });
       }
       if (hooks && hooks.start) {
         hooks.start(rest);
@@ -99,6 +178,9 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
         }
         return promise({ getState, dispatch, ...additionalData }).then(
           result => {
+            if ((types && types.success) || type) {
+              callGlobalHooks.success({ ...rest, result, type: types ? types.success : action.type });
+            }
             if (hooks && hooks.success) {
               hooks.success({ ...rest, result });
             }
@@ -107,6 +189,9 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
               : null;
           },
           error => {
+            if (types && types.error) {
+              callGlobalHooks.error({ ...rest, error, type: types.error });
+            }
             if (hooks && hooks.error) {
               hooks.error({ ...rest, error });
             }
@@ -121,17 +206,19 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
         try {
           result = func({ getState, dispatch, ...additionalData });
           // now errors thrown in success hook and next() function will be caught as well. This is unexpected behaviour and should be changed in the future.
+          callGlobalHooks.success({ ...rest, result, type: types ? types.success : type });
           if (hooks && hooks.success) {
             hooks.success({ ...rest, result });
           }
           if ((types && types.success) || type) {
-            next({...rest, result, type: types ? types.success : type});
+            next({ ...rest, result, type: types ? types.success : type });
           }
         } catch (error) {
           if (hooks && hooks.error) {
             hooks.error({ ...rest, error });
           }
           if (types && types.error) {
+            callGlobalHooks.error({ ...rest, error, type: types.error });
             next({ ...rest, error, type: types.error });
           }
         }
