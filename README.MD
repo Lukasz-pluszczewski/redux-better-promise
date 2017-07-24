@@ -1,6 +1,8 @@
 # redux-better-promise
 > Simple and powerful redux middleware that supports async side-effects (and much more)
 
+[![CircleCI](https://circleci.com/gh/Lukasz-pluszczewski/redux-better-promise/tree/master.svg?style=svg)](https://circleci.com/gh/Lukasz-pluszczewski/redux-better-promise/tree/master)
+
 Redux middleware that will allow you to:
 * Create actions with side-effects that will dispatch different actions on different side-effect results
 * Create actions with both async and sync side-effects
