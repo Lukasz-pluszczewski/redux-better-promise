@@ -6,7 +6,7 @@ import chaiAsPromised from 'chai-as-promised';
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
-import createReduxPromise from '../src/index';
+import createReduxPromise, { actionTypes } from '../src/index';
 
 const create = middleware => {
   const store = {
@@ -47,6 +47,7 @@ describe('redux-better-promise', () => {
   });
 
   describe('factory', () => {
+    /* =============== creating middleware =============== */
     it('should create middleware', function(done) {
       const { store, next, invoke } = create(createReduxPromise());
 
@@ -142,6 +143,7 @@ describe('redux-better-promise', () => {
     });
   });
   describe('middleware', () => {
+    /* =============== deciding if middleware should handle this action =============== */
     it('should pass ordinary action to the "next" function', () => {
       const { next, invoke } = create(createReduxPromise());
       const action = {
@@ -155,6 +157,7 @@ describe('redux-better-promise', () => {
       expect(next).to.be.calledWith(action);
     });
 
+    /* =============== dispatching correct actions =============== */
     it('should dispatch given START action (as object field or array element) before "promise"', function(done) {
       const { next, invoke } = create(createReduxPromise());
 
@@ -315,31 +318,6 @@ describe('redux-better-promise', () => {
       }, 0);
     });
 
-    it('should trigger START, SUCCESS and ERROR hooks', function(done) {
-      const { next, invoke } = create(createReduxPromise());
-
-      invoke({
-        types: [START, SUCCESS, ERROR],
-        hooks: [startHook, successHook, null],
-        promise: promiseResolve,
-        payload,
-        additionalField: 'additionalValue',
-      });
-
-      invoke({
-        types: [START, SUCCESS, ERROR],
-        hooks: [null, null, errorHook],
-        promise: promiseRejects,
-      });
-
-      setTimeout(() => {
-        expect(startHook).to.have.been.calledOnce;
-        expect(successHook).to.have.been.calledOnce;
-        expect(errorHook).to.have.been.calledOnce;
-        done();
-      }, 0);
-    });
-
     it('should add any additional data from action definition to START, SUCCESS or ERROR actions', function(done) {
       const { store, next, invoke } = create(createReduxPromise());
 
@@ -362,35 +340,6 @@ describe('redux-better-promise', () => {
         expect(next).to.have.been.calledWithMatch({ type: START, payload, additionalField: 'additionalValue' });
         expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload, additionalField: 'additionalValue' });
         expect(next).to.have.been.calledWithMatch({ type: ERROR, error: 'error', payload, additionalField: 'additionalValue' });
-        done();
-      }, 0);
-    });
-    it('should add any additional data from action definition to START, SUCCESS or ERROR hooks', function(done) {
-      const { next, invoke } = create(createReduxPromise());
-
-      invoke({
-        types: [START, SUCCESS, ERROR],
-        hooks: [startHook, successHook, null],
-        promise: promiseResolve,
-        payload,
-        additionalField: 'additionalValue',
-      });
-
-      invoke({
-        types: [START, SUCCESS, ERROR],
-        hooks: [null, null, errorHook],
-        promise: promiseRejects,
-        payload,
-        additionalField: 'additionalValue',
-      });
-
-      setTimeout(() => {
-        expect(startHook).to.have.been.calledOnce;
-        expect(startHook).to.have.been.calledWithMatch({ payload, additionalField: 'additionalValue', });
-        expect(successHook).to.have.been.calledOnce;
-        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload, additionalField: 'additionalValue' });
-        expect(errorHook).to.have.been.calledOnce;
-        expect(errorHook).to.have.been.calledWithMatch({ error: 'error', payload, additionalField: 'additionalValue' });
         done();
       }, 0);
     });
@@ -467,6 +416,315 @@ describe('redux-better-promise', () => {
       }, 0);
     });
 
+    /* =============== calling hooks =============== */
+    it('should trigger START, SUCCESS and ERROR hooks', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        hooks: [startHook, successHook, null],
+        promise: promiseResolve,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        hooks: [null, null, errorHook],
+        promise: promiseRejects,
+      });
+
+      setTimeout(() => {
+        expect(startHook).to.have.been.calledOnce;
+        expect(successHook).to.have.been.calledOnce;
+        expect(errorHook).to.have.been.calledOnce;
+        done();
+      }, 0);
+    });
+
+    it('should add any additional data from action definition to START, SUCCESS or ERROR hooks', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        hooks: [startHook, successHook, null],
+        promise: promiseResolve,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        hooks: [null, null, errorHook],
+        promise: promiseRejects,
+        payload,
+        additionalField: 'additionalValue',
+      });
+
+      setTimeout(() => {
+        expect(startHook).to.have.been.calledOnce;
+        expect(startHook).to.have.been.calledWithMatch({ payload, additionalField: 'additionalValue', });
+        expect(successHook).to.have.been.calledOnce;
+        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload, additionalField: 'additionalValue' });
+        expect(errorHook).to.have.been.calledOnce;
+        expect(errorHook).to.have.been.calledWithMatch({ error: 'error', payload, additionalField: 'additionalValue' });
+        done();
+      }, 0);
+    });
+
+    /* =============== global hooks =============== */
+    it('should call a global hook', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          globalHook,
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledTwice;
+        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        done();
+      }, 0);
+    });
+    it('should call a global START hook', function(done) {
+      const globalHook = sinon.spy();
+      const { store, invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: actionTypes.start,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
+        done();
+      }, 0);
+    });
+    it('should call a global SUCCESS hook', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: actionTypes.success,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        done();
+      }, 0);
+    });
+    it('should call a global ERROR', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: actionTypes.error,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseRejects,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: ERROR, error: 'error', payload });
+        done();
+      }, 0);
+    });
+    it('should call a global hook on finish actions - SUCCESS and ERROR', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: actionTypes.finish,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseRejects,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledTwice;
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).to.be.calledWithMatch({ type: ERROR, error: 'error', payload });
+        done();
+      }, 0);
+    });
+
+    it('should call a global hook by action type', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: SUCCESS,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).to.not.be.calledWithMatch({ type: START, payload });
+        done();
+      }, 0);
+    });
+    it('should call a global hook by array of action types', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: [ START, SUCCESS ],
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      invoke({
+        types: [null, SUCCESS, ERROR],
+        promise: promiseRejects,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledTwice;
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).to.not.be.calledWithMatch({ type: ERROR, error: 'error', payload });
+        done();
+      }, 0);
+    });
+    it('should call a global hook by regex', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: /SUCCESS/,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).to.not.be.calledWithMatch({ type: START, payload });
+        done();
+      }, 0);
+    });
+    it('should call a global hook by filter function', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: type => type !== SUCCESS,
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).to.not.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        done();
+      }, 0);
+    });
+
+    it('should filter out action based on exclude field in hook', function(done) {
+      const globalHook = sinon.spy();
+      const { invoke } = create(createReduxPromise(null, {
+        hooks: [
+          {
+            actionType: [START, SUCCESS],
+            actionTypeExclude: [START],
+            hook: globalHook,
+          },
+        ],
+      }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        payload,
+      });
+
+      setTimeout(() => {
+        expect(globalHook).to.be.calledOnce;
+        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).to.not.be.calledWithMatch({ type: START, payload });
+        done();
+      }, 0);
+    });
+
+    /* =============== validation =============== */
     it('should throw an error when "types" field has wrong type', () => {
       const { invoke } = create(createReduxPromise());
 

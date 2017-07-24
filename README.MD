@@ -220,7 +220,76 @@ function getAsyncAction() {
 
 Now 'ACTION_SUCCESS' action would be triggered only if `promise` action resolves. So in this case no action is going to be dispatched.
 
-#### Changing default fields names
+#### Registering global hooks
+Instead of adding hooks to each action you can add global ones in `hooks` field of a second argument of middlewareCreator:
+```javascript
+import createReduxPromise, { reduxPromiseActionTypes } from 'redux-better-promise';
+
+const store = createStore(
+  rootReducer,
+  applyMiddleware(createReduxPromise(null, { hooks: [
+    ({ type, result, error, payload }) => console.log('I will be triggered on each and every action'),
+    {
+      actionType: reduxPromiseActionTypes.success,
+      hook: ({ result }) => console.log('I will be triggered on every success action'),
+    },
+    {
+      actionType: /^\w*ERROR$/,
+      hook: ({ error }) => console.log('I will be triggered only on actions ending in "ERROR"'),
+    },
+    {
+      actionType: (type, action) => !~(['ONE_ACTION', 'DIFFERENT_ACTION']).indexOf(type),
+      hook: () => console.log('I will be triggered on all actions except ONE_ACTION and DIFFERENT_ACTION'),
+    },
+    {
+      actionType: ['ONE_ACTION', 'DIFFERENT_ACTION'],
+      hook: () => console.log('I will be triggered on ONE_ACTION and DIFFERENT_ACTION only'),
+    }
+  ] }))
+);
+```
+
+You can also replace actionType with actionTypeExclude which will just inverts the behaviour of that field or even use both fields (the `exclude` field will overwrite the `include` filed):
+```javascript
+import createReduxPromise, { actionTypes: reduxPromiseActionTypes } from 'redux-better-promise';
+
+const store = createStore(
+  rootReducer,
+  applyMiddleware(createReduxPromise(null, { hooks: [
+    ({ type, result, error, payload }) => console.log('I will be triggered on each and every action'), // note that global hooks gets `type` in the first parameter wheras per-action hooks do not
+    {
+      actionTypeExclude: reduxPromiseActionTypes.success,
+      hook: ({ result }) => console.log('I will be triggered on every start and error action'),
+    },
+    {
+      actionTypeExclude: /^\w*ERROR$/,
+      hook: ({ error }) => console.log('I will be triggered only on actions not ending in "ERROR"'),
+    },
+    {
+      actionTypeExclude: (type, action) => !~(['ONE_ACTION', 'DIFFERENT_ACTION']).indexOf(type),
+      hook: () => console.log('I will be triggered on ONE_ACTION and DIFFERENT_ACTION only'),
+    },
+    {
+      actionType: ['ONE_ACTION', 'DIFFERENT_ACTION'],
+      actionTypeExclude: (type, action) => action.payload,
+      hook: () => console.log('I will be triggered on ONE_ACTION and DIFFERENT_ACTION only if the do not have `payload` field'),
+    }
+  ] }))
+);
+```
+
+There are different generic types in actionTypes named export object:
+```javascript
+import { actionTypes } from 'redux-better-promise';
+
+actionTypes.start;
+actionTypes.success;
+actionTypes.error;
+actionTypes.finish; // success and error
+```
+
+
+#### Changing default field names
 Most of the time it's better not to have fields named `function` in you code ;)
 You can change all default field names by providing any number of configFields as a second argument to middlewareCreator
 ```javascript
@@ -273,7 +342,7 @@ function getAsyncAction() {
 }
 ```
 
-When dispatching action above no action will be actually dispatched on redux store. As using redux in this way doesn't make sense, actions that has neither `types` nor `type` field will throw an error when dispatched.
+When dispatching action above no action will actually be dispatched on redux store. As using redux in this way doesn't make sense, actions that has neither `types` nor `type` field will throw an error when dispatched.
 Note that you still can make a workaround:
 ```javascript
 function getAsyncAction() {
@@ -286,17 +355,17 @@ function getAsyncAction() {
 Although in this version such action will not throw an error it is generally bad idea to create it. Even with hooks, it's much better (and easier to reason about) when calling promise directly.
 
 #### conditional dispatchers
-As with `redux-thunk` you can create action that will conditionally dispatch other actions:
+As with `redux-thunk` o `redux-saga` you can create action that will conditionally dispatch other actions:
 ```javascript
-function getAsyncAction(makeItSo) {
+function getWrapperAction(makeItSo) {
   return {
     function: ({ dispatch }) => makeItSo ? dispatch(someOtherAction) : null,
   };
 }
 ```
-Most of the time it's not a good idea. It's probably better to just conditionally dispatch someOtherAction than to create action to do that for you.
+Most of the time it's not a good idea. It's probably better to just conditionally dispatch someOtherAction than to create wrapper action to do that for you.
 
 ## Roadmap
 * Errors in success hooks should not be caught together with errors in `function`
 * Add global hooks option (with mechanism to apply hooks to only some actions based on filter function or regex or type: start, success, error)
-* Refactor tests (merge some tests split other to make them more readable)
+* Refactor tests (merge some tests and split others to make them more readable)
