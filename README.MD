@@ -355,7 +355,7 @@ function getAsyncAction() {
 Although in this version such action will not throw an error it is generally bad idea to create it. Even with hooks, it's much better (and easier to reason about) when calling promise directly.
 
 #### conditional dispatchers
-As with `redux-thunk` o `redux-saga` you can create action that will conditionally dispatch other actions:
+As with `redux-thunk` or `redux-saga` you can create action that will conditionally dispatch other actions:
 ```javascript
 function getWrapperAction(makeItSo) {
   return {
