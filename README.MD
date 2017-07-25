@@ -369,5 +369,8 @@ Most of the time it's not a good idea. It's probably better to just conditionall
 
 ## Roadmap
 * Errors in success hooks should not be caught together with errors in `function`
-* Add global hooks option (with mechanism to apply hooks to only some actions based on filter function or regex or type: start, success, error)
 * Refactor tests (merge some tests and split others to make them more readable)
+
+#### What's not going to be done
+* You will not be able to dynamically add hooks (like listeners) to actions (e.g. with middleware.addHook()) except in action creators. The power of redux is in the ability to quickly find the reason why something happened and adding dynamic listeners will make the code hard to understand.
+
