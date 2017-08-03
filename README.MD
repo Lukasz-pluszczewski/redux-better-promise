@@ -225,7 +225,7 @@ Now 'ACTION_SUCCESS' action would be triggered only if `promise` action resolves
 #### Registering global hooks
 Instead of adding hooks to each action you can add global ones in `hooks` field of a second argument of middlewareCreator:
 ```javascript
-import createReduxPromise, { reduxPromiseActionTypes } from 'redux-better-promise';
+import createReduxPromise, { actionTypes: reduxPromiseActionTypes } from 'redux-better-promise';
 
 const store = createStore(
   rootReducer,
