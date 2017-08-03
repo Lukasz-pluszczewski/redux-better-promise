@@ -1,6 +1,6 @@
 {
   "name": "redux-better-promise",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Simple and powerful redux middleware that supports async side-effects (and much more)",
   "repository": {
     "type": "git",
