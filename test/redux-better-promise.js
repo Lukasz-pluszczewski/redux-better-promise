@@ -749,5 +749,55 @@ describe('redux-better-promise', () => {
         promise: promiseResolve,
       }) ).to.throw(Error);
     });
+
+    /* =============== debounce =============== */
+    it('should debounce promise function together with SUCCESS action', function(done) {
+      const { next, invoke } = create(createReduxPromise());
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        debounce: { finish: 300 },
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        debounce: { finish: 300 },
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledThrice;
+        expect(promiseResolve).to.have.been.calledOnce;
+        expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START });
+        expect(next.getCall(1)).to.have.been.calledWithMatch({ type: START });
+        expect(next.getCall(2)).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 400);
+    });
+
+    it('should debounce START and SUCCESS actions but not promise function', function(done) {
+      const { next, invoke } = create(createReduxPromise({ debounceFunctionWithFinish: false }));
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseRejects,
+        debounce: { start: 300, finish: 300 },
+      });
+
+      invoke({
+        types: [START, SUCCESS, ERROR],
+        promise: promiseResolve,
+        debounce: { start: 300, finish: 300 },2
+      });
+
+      setTimeout(() => {
+        expect(next).to.have.been.calledTwice;
+        expect(promiseResolve).to.have.been.calledTwice;
+        expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START });
+        expect(next.getCall(1)).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        done();
+      }, 400);
+    });
   });
 });
