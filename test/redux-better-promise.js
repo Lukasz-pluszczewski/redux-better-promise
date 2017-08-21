@@ -788,7 +788,7 @@ describe('redux-better-promise', () => {
       invoke({
         types: [START, SUCCESS, ERROR],
         promise: promiseResolve,
-        debounce: { start: 300, finish: 300 },2
+        debounce: { start: 300, finish: 300 },
       });
 
       setTimeout(() => {
