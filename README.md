@@ -12,7 +12,7 @@ Redux middleware that will allow you to:
 ##### Why this exists?
 There are some good middlewares that help manage side-effects in redux actions but they generally allow you to create actions creators that are vastly different then standard ones. I decided to make middleware with which you will be able to make action creators that will look consistent with the rest of the application and have all the other middlewares' power combined!
 
-#### Are there good alternatives? 
+#### Are there good alternatives?
 Yes and you should definitely check them out:
 * [redux-thunk](https://github.com/gaearon/redux-thunk)
 * [redux-saga](https://github.com/redux-saga/redux-saga)
