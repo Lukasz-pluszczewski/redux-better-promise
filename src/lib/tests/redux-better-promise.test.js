@@ -1,19 +1,11 @@
-import chai, { expect } from 'chai';
-import sinon from 'sinon';
-import sinonChai from 'sinon-chai';
-import chaiAsPromised from 'chai-as-promised';
-
-chai.use(sinonChai);
-chai.use(chaiAsPromised);
-
-import createReduxPromise, { actionTypes } from '../src/index';
+import createReduxPromise, { actionTypes } from '../index';
 
 const create = middleware => {
   const store = {
-    getState: sinon.stub(),
-    dispatch: sinon.spy(),
+    getState: jest.fn(),
+    dispatch: jest.fn(),
   };
-  const next = sinon.spy();
+  const next = jest.fn();
 
   const invoke = action => middleware(store)(next)(action);
 
@@ -26,24 +18,24 @@ const START = 'START';
 const SUCCESS = 'SUCCESS';
 const ERROR = 'ERROR';
 
-const startHook = sinon.spy();
-const successHook = sinon.spy();
-const errorHook = sinon.spy();
-const promiseResolve = sinon.stub().resolves('result');
-const promiseRejects = sinon.stub().returns(Promise.reject('error'));
-const funcOk = sinon.stub().returns('result');
-const funcError = sinon.stub().throws(errorThrown);
+const startHook = jest.fn();
+const successHook = jest.fn();
+const errorHook = jest.fn();
+const promiseResolve = jest.fn(() => Promise.resolve('result'));
+const promiseRejects = jest.fn(() => Promise.reject('error'));
+const funcOk = jest.fn(() => 'result');
+const funcError = jest.fn(() => {throw errorThrown});
 const payload = 'payload';
 
 describe('redux-better-promise', () => {
   beforeEach(() => {
-    startHook.reset();
-    successHook.reset();
-    errorHook.reset();
-    promiseResolve.resetHistory();
-    promiseRejects.resetHistory();
-    funcOk.resetHistory();
-    funcError.resetHistory();
+    startHook.mockClear();
+    successHook.mockClear();
+    errorHook.mockClear();
+    promiseResolve.mockClear();
+    promiseRejects.mockClear();
+    funcOk.mockClear();
+    funcError.mockClear();
   });
 
   describe('factory', () => {
@@ -59,16 +51,17 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(promiseResolve).to.have.been.calledOnce;
-        expect(promiseResolve).to.have.been.calledWithMatch({ getState: store.getState, dispatch: store.dispatch });
-        expect(next).to.have.been.calledTwice;
-        expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START, payload });
-        expect(next.getCall(1)).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(startHook).to.have.been.calledOnce;
-        expect(startHook).to.have.been.calledWithMatch({ payload });
-        expect(successHook).to.have.been.calledOnce;
-        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload });
-        expect(errorHook).to.not.have.been.called;
+
+        expect(promiseResolve).toHaveBeenCalledTimes(1);
+        expect(promiseResolve.mock.calls[0][0]).toMatchObject({ getState: store.getState, dispatch: store.dispatch });
+        expect(next).toHaveBeenCalledTimes(2);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: START, payload });
+        expect(next.mock.calls[1][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(startHook).toHaveBeenCalledTimes(1);
+        expect(startHook.mock.calls[0][0]).toMatchObject({ payload });
+        expect(successHook).toHaveBeenCalledTimes(1);
+        expect(successHook.mock.calls[0][0]).toMatchObject({ result: 'result', payload });
+        expect(errorHook).not.toHaveBeenCalled();
         done();
       }, 0); // required to run after all synchronous code (and after previous async code, like promises inside the middleware)
     });
@@ -99,18 +92,18 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(promiseResolve).to.have.been.calledOnce;
-        expect(promiseResolve).to.have.been.calledWithMatch({ getState: store.getState, dispatch: store.dispatch });
-        expect(funcOk).to.have.been.calledOnce;
-        expect(funcOk).to.have.been.calledWithMatch({ getState: store.getState, dispatch: store.dispatch });
-        expect(next).to.have.been.calledTwice;
-        expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START, payload });
-        expect(next.getCall(1)).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(startHook).to.have.been.calledOnce;
-        expect(startHook).to.have.been.calledWithMatch({ payload });
-        expect(successHook).to.have.been.calledOnce;
-        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload });
-        expect(errorHook).to.not.have.been.called;
+        expect(promiseResolve).toHaveBeenCalledTimes(1);
+        expect(promiseResolve.mock.calls[0][0]).toMatchObject({ getState: store.getState, dispatch: store.dispatch });
+        expect(funcOk).toHaveBeenCalledTimes(1);
+        expect(funcOk.mock.calls[0][0]).toMatchObject({ getState: store.getState, dispatch: store.dispatch });
+        expect(next).toHaveBeenCalledTimes(2);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: START, payload });
+        expect(next.mock.calls[1][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(startHook).toHaveBeenCalledTimes(1);
+        expect(startHook.mock.calls[0][0]).toMatchObject({ payload });
+        expect(successHook).toHaveBeenCalledTimes(1);
+        expect(successHook.mock.calls[0][0]).toMatchObject({ result: 'result', payload });
+        expect(errorHook).not.toHaveBeenCalled();
         done();
       }, 0);
     });
@@ -126,14 +119,14 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(promiseResolve).to.have.been.calledOnce;
-        expect(promiseResolve).to.have.been.calledWithMatch({
+        expect(promiseResolve).toHaveBeenCalledTimes(1);
+        expect(promiseResolve.mock.calls[0][0]).toMatchObject({
           getState: store.getState,
           dispatch: store.dispatch,
           ...additionalData,
         });
-        expect(funcOk).to.have.been.calledOnce;
-        expect(funcOk).to.have.been.calledWithMatch({
+        expect(funcOk).toHaveBeenCalledTimes(1);
+        expect(funcOk.mock.calls[0][0]).toMatchObject({
           getState: store.getState,
           dispatch: store.dispatch,
           ...additionalData,
@@ -153,8 +146,8 @@ describe('redux-better-promise', () => {
 
       invoke(action);
 
-      expect(next).to.be.calledOnce;
-      expect(next).to.be.calledWith(action);
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith(action);
     });
 
     /* =============== dispatching correct actions =============== */
@@ -167,10 +160,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(promiseResolve).to.have.been.calledOnce;
-        expect(next).to.have.been.calledBefore(promiseResolve); // particular call should be checked but `expect(next.getCall(0))` does not work here :/
-        expect(next.getCall(0)).to.have.been.calledWithMatch({ type: START });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(promiseResolve).toHaveBeenCalledTimes(1);
+        // expect(next).toHaveBeenCalledBefore(promiseResolve); // particular call should be checked but `expect(next.getCall(0))` does not work here :/
+        expect(next.mock.calls[0][0]).toMatchObject({ type: START });
         done();
       }, 0);
     });
@@ -183,10 +176,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(promiseResolve).to.have.been.calledOnce;
-        expect(next).to.have.been.calledAfter(promiseResolve);
-        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(promiseResolve).toHaveBeenCalledTimes(1);
+        // expect(next).to.have.been.calledAfter(promiseResolve);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result' });
         done();
       }, 0);
     });
@@ -199,10 +192,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(promiseRejects).to.have.been.calledOnce;
-        expect(next).to.have.been.calledAfter(promiseRejects);
-        expect(next).to.have.been.calledWithMatch({ type: ERROR, error: 'error' });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(promiseRejects).toHaveBeenCalledTimes(1);
+        // expect(next).to.have.been.calledAfter(promiseRejects);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: ERROR, error: 'error' });
         done();
       }, 0);
     });
@@ -216,9 +209,9 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledTwice;
-        expect(promiseRejects).to.have.been.calledOnce;
-        expect(next.getCall(1)).to.not.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        expect(next).toHaveBeenCalledTimes(2);
+        expect(promiseRejects).toHaveBeenCalledTimes(1);
+        expect(next.mock.calls[1][0]).not.toMatchObject({ type: SUCCESS, result: 'result' });
         done();
       }, 0);
     });
@@ -231,9 +224,9 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledTwice;
-        expect(promiseResolve).to.have.been.calledOnce;
-        expect(next.getCall(1)).to.not.have.been.calledWithMatch({ type: ERROR, error: 'error' });
+        expect(next).toHaveBeenCalledTimes(2);
+        expect(promiseResolve).toHaveBeenCalledTimes(1);
+        expect(next.mock.calls[1][0]).not.toMatchObject({ type: ERROR, error: 'error' });
         done();
       }, 0);
     });
@@ -247,10 +240,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(funcOk).to.have.been.calledOnce;
-        expect(next).to.have.been.calledBefore(funcOk); // particular call should be checked but `expect(next.getCall(0))` does not work here :/
-        expect(next).to.have.been.calledWithMatch({ type: START });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(funcOk).toHaveBeenCalledTimes(1);
+        // expect(next).toHaveBeenCalledBefore(funcOk); // particular call should be checked but `expect(next.getCall(0))` does not work here :/
+        expect(next.mock.calls[0][0]).toMatchObject({ type: START });
         done();
       }, 0);
     });
@@ -263,10 +256,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(funcOk).to.have.been.calledOnce;
-        expect(next).to.have.been.calledAfter(funcOk);
-        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(funcOk).toHaveBeenCalledTimes(1);
+        // expect(next).to.have.been.calledAfter(funcOk);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result' });
         done();
       }, 0);
     });
@@ -279,10 +272,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(funcError).to.have.been.calledOnce;
-        expect(next).to.have.been.calledAfter(funcError);
-        expect(next).to.have.been.calledWithMatch({ type: ERROR, error: errorThrown });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(funcError).toHaveBeenCalledTimes(1);
+        // expect(next).to.have.been.calledAfter(funcError);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: ERROR, error: errorThrown });
         done();
       }, 0);
     });
@@ -296,9 +289,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.be.calledTwice;
-        expect(funcError).to.have.been.calledOnce;
-        expect(next).to.not.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        expect(next).toHaveBeenCalledTimes(2);
+        expect(funcError).toHaveBeenCalledTimes(1);
+        expect(next.mock.calls[0][0]).not.toMatchObject({ type: SUCCESS, result: 'result' });
+        expect(next.mock.calls[1][0]).not.toMatchObject({ type: SUCCESS, result: 'result' });
         done();
       }, 0);
     });
@@ -311,9 +305,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.be.calledTwice;
-        expect(funcOk).to.have.been.calledOnce;
-        expect(next).to.not.have.been.calledWithMatch({ type: ERROR, error: 'error' });
+        expect(next).toHaveBeenCalledTimes(2);
+        expect(funcOk).toHaveBeenCalledTimes(1);
+        expect(next.mock.calls[0][0]).not.toMatchObject({ type: ERROR, error: 'error' });
+        expect(next.mock.calls[1][0]).not.toMatchObject({ type: ERROR, error: 'error' });
         done();
       }, 0);
     });
@@ -336,10 +331,10 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledThrice;
-        expect(next).to.have.been.calledWithMatch({ type: START, payload, additionalField: 'additionalValue' });
-        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result', payload, additionalField: 'additionalValue' });
-        expect(next).to.have.been.calledWithMatch({ type: ERROR, error: 'error', payload, additionalField: 'additionalValue' });
+        expect(next).toHaveBeenCalledTimes(3);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: START, payload, additionalField: 'additionalValue' });
+        expect(next.mock.calls[1][0]).toMatchObject({ type: SUCCESS, result: 'result', payload, additionalField: 'additionalValue' });
+        expect(next.mock.calls[2][0]).toMatchObject({ type: ERROR, error: 'error', payload, additionalField: 'additionalValue' });
         done();
       }, 0);
     });
@@ -353,8 +348,8 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result' });
         done();
       }, 0);
     });
@@ -367,8 +362,8 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.have.been.calledOnce;
-        expect(next).to.have.been.calledWithMatch({ type: SUCCESS, result: 'result' });
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(next.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result' });
         done();
       }, 0);
     });
@@ -382,7 +377,7 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.not.have.been.called;
+        expect(next).not.toHaveBeenCalled();
         done();
       }, 0);
     });
@@ -395,7 +390,7 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(next).to.not.have.been.called;
+        expect(next).not.toHaveBeenCalled();
         done();
       }, 0);
     });
@@ -410,8 +405,8 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(funcOk).to.have.been.calledOnce;
-        expect(funcOk).to.have.been.calledWithMatch({ getState: store.getState, dispatch: store.dispatch });
+        expect(funcOk).toHaveBeenCalledTimes(1);
+        expect(funcOk.mock.calls[0][0]).toMatchObject({ getState: store.getState, dispatch: store.dispatch });
         done();
       }, 0);
     });
@@ -435,9 +430,9 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(startHook).to.have.been.calledOnce;
-        expect(successHook).to.have.been.calledOnce;
-        expect(errorHook).to.have.been.calledOnce;
+        expect(startHook).toHaveBeenCalledTimes(1);
+        expect(successHook).toHaveBeenCalledTimes(1);
+        expect(errorHook).toHaveBeenCalledTimes(1);
         done();
       }, 0);
     });
@@ -462,19 +457,19 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(startHook).to.have.been.calledOnce;
-        expect(startHook).to.have.been.calledWithMatch({ payload, additionalField: 'additionalValue', });
-        expect(successHook).to.have.been.calledOnce;
-        expect(successHook).to.have.been.calledWithMatch({ result: 'result', payload, additionalField: 'additionalValue' });
-        expect(errorHook).to.have.been.calledOnce;
-        expect(errorHook).to.have.been.calledWithMatch({ error: 'error', payload, additionalField: 'additionalValue' });
+        expect(startHook).toHaveBeenCalledTimes(1);
+        expect(startHook.mock.calls[0][0]).toMatchObject({ payload, additionalField: 'additionalValue', });
+        expect(successHook).toHaveBeenCalledTimes(1);
+        expect(successHook.mock.calls[0][0]).toMatchObject({ result: 'result', payload, additionalField: 'additionalValue' });
+        expect(errorHook).toHaveBeenCalledTimes(1);
+        expect(errorHook.mock.calls[0][0]).toMatchObject({ error: 'error', payload, additionalField: 'additionalValue' });
         done();
       }, 0);
     });
 
     /* =============== global hooks =============== */
     it('should call a global hook', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           globalHook,
@@ -488,14 +483,14 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledTwice;
-        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).toHaveBeenCalledTimes(2);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: START, payload });
+        expect(globalHook.mock.calls[1][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
         done();
       }, 0);
     });
     it('should call a global START hook', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { store, invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -512,13 +507,13 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: START, payload });
         done();
       }, 0);
     });
     it('should call a global SUCCESS hook', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -535,13 +530,13 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
         done();
       }, 0);
     });
     it('should call a global ERROR', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -558,13 +553,13 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: ERROR, error: 'error', payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: ERROR, error: 'error', payload });
         done();
       }, 0);
     });
     it('should call a global hook on finish actions - SUCCESS and ERROR', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -587,15 +582,15 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledTwice;
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(globalHook).to.be.calledWithMatch({ type: ERROR, error: 'error', payload });
+        expect(globalHook).toHaveBeenCalledTimes(2);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook.mock.calls[1][0]).toMatchObject({ type: ERROR, error: 'error', payload });
         done();
       }, 0);
     });
 
     it('should call a global hook by action type', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -612,14 +607,14 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(globalHook).to.not.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook.mock.calls[0][0]).not.toMatchObject({ type: START, payload });
         done();
       }, 0);
     });
     it('should call a global hook by array of action types', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -642,15 +637,16 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledTwice;
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
-        expect(globalHook).to.not.be.calledWithMatch({ type: ERROR, error: 'error', payload });
+        expect(globalHook).toHaveBeenCalledTimes(2);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: START, payload });
+        expect(globalHook.mock.calls[1][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook.mock.calls[0][0]).not.toMatchObject({ type: ERROR, error: 'error', payload });
+        expect(globalHook.mock.calls[1][0]).not.toMatchObject({ type: ERROR, error: 'error', payload });
         done();
       }, 0);
     });
     it('should call a global hook by regex', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -667,14 +663,14 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(globalHook).to.not.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook.mock.calls[0][0]).not.toMatchObject({ type: START, payload });
         done();
       }, 0);
     });
     it('should call a global hook by filter function', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -691,15 +687,15 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: START, payload });
-        expect(globalHook).to.not.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: START, payload });
+        expect(globalHook.mock.calls[0][0]).not.toMatchObject({ type: SUCCESS, result: 'result', payload });
         done();
       }, 0);
     });
 
     it('should filter out action based on exclude field in hook', function(done) {
-      const globalHook = sinon.spy();
+      const globalHook = jest.fn();
       const { invoke } = create(createReduxPromise(null, {
         hooks: [
           {
@@ -717,9 +713,9 @@ describe('redux-better-promise', () => {
       });
 
       setTimeout(() => {
-        expect(globalHook).to.be.calledOnce;
-        expect(globalHook).to.be.calledWithMatch({ type: SUCCESS, result: 'result', payload });
-        expect(globalHook).to.not.be.calledWithMatch({ type: START, payload });
+        expect(globalHook).toHaveBeenCalledTimes(1);
+        expect(globalHook.mock.calls[0][0]).toMatchObject({ type: SUCCESS, result: 'result', payload });
+        expect(globalHook.mock.calls[0][0]).not.toMatchObject({ type: START, payload });
         done();
       }, 0);
     });
@@ -731,7 +727,7 @@ describe('redux-better-promise', () => {
       expect( () => invoke({
         types: () => 'Hello! I have wrong type :)',
         promise: promiseResolve,
-      }) ).to.throw(Error);
+      }) ).toThrowError(Error);
     });
     it('should throw an error when "hooks" field has wrong type', () => {
       const { invoke } = create(createReduxPromise());
@@ -740,14 +736,14 @@ describe('redux-better-promise', () => {
         types: [START, SUCCESS, ERROR],
         hooks: () => 'Hello! I have wrong type :)',
         promise: promiseResolve,
-      }) ).to.throw(Error);
+      }) ).toThrowError(Error);
     });
     it('should throw an error when there is neither "type" nor "types" field in the action', () => {
       const { invoke } = create(createReduxPromise());
 
       expect( () => invoke({
         promise: promiseResolve,
-      }) ).to.throw(Error);
+      }) ).toThrowError(Error);
     });
   });
 });

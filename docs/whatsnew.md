@@ -1,3 +1,7 @@
+#### 1.0.0
+ * Migrated to Webpack 4 and Babel 7
+ * Tests rewrote using Jest
+
 #### 0.1.3
  * Updated readme
 

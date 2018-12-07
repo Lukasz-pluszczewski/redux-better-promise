@@ -1,4 +1,8 @@
-import _ from 'lodash';
+import isFunction from 'lodash/isFunction';
+import isRegExp from 'lodash/isRegExp';
+import isPlainObject from 'lodash/isPlainObject';
+import merge from 'lodash/merge';
+import omit from 'lodash/omit';
 
 const defaultConfig = {
   promiseFieldName: 'promise',
@@ -38,10 +42,10 @@ const checkActionType = (actionType, type, params) => {
     return type === 'error';
   } else if (actionType instanceof FinishActionType) {
     return type === 'error' || type === 'success';
-  } else if (_.isFunction(actionType)) {
+  } else if (isFunction(actionType)) {
     const { type, ...rest } = params;
     return actionType(type, rest);
-  } else if (_.isRegExp(actionType)) {
+  } else if (isRegExp(actionType)) {
     return actionType.test(params.type);
   } else if (typeof actionType === 'string') {
     return actionType === params.type;
@@ -73,7 +77,7 @@ const createCallGlobalHooks = (hooks = []) => {
   const hookCaller = {
     call: (type, params) => {
       hooks.forEach(hook => {
-        if (_.isFunction(hook)) {
+        if (isFunction(hook)) {
           hook(params);
         } else if (checkActionTypes(hook.actionType, hook.actionTypeExclude, type, params)) {
           hook.hook(params);
@@ -95,7 +99,7 @@ const createCallGlobalHooks = (hooks = []) => {
 };
 
 export default function createReduxPromiseMiddleware(additionalData, userConfig) {
-  const config = _.merge({}, defaultConfig, userConfig);
+  const config = merge({}, defaultConfig, userConfig);
   const callGlobalHooks = createCallGlobalHooks(config.hooks);
 
   return ({ getState, dispatch }) => next => action => {
@@ -117,7 +121,7 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
             success: action[config.typesFieldName][1],
             error: action[config.typesFieldName][2],
           };
-        } else if (_.isPlainObject(action[config.typesFieldName])) {
+        } else if (isPlainObject(action[config.typesFieldName])) {
           types = {
             start: action[config.typesFieldName][config.typesNames.start],
             success: action[config.typesFieldName][config.typesNames.success],
@@ -141,7 +145,7 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
             success: action[config.hooksFieldName][1],
             error: action[config.hooksFieldName][2],
           };
-        } else if (_.isPlainObject(action[config.hooksFieldName])) {
+        } else if (isPlainObject(action[config.hooksFieldName])) {
           hooks = {
             start: action[config.hooksFieldName][config.hooksNames.start],
             success: action[config.hooksFieldName][config.hooksNames.success],
@@ -152,7 +156,7 @@ export default function createReduxPromiseMiddleware(additionalData, userConfig)
         }
       }
 
-      const rest = _.omit(
+      const rest = omit(
         action,
         [config.promiseFieldName, config.functionFieldName, config.typesFieldName, config.hooksFieldName, 'type']
       );
