@@ -1,6 +1,6 @@
 {
   "name": "redux-better-promise",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple and powerful redux middleware that supports async side-effects (and much more)",
   "main": "build/index.js",
   "scripts": {
