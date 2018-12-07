@@ -1,4 +1,4 @@
-#### 1.0.0
+#### 1.0.1
  * Migrated to Webpack 4 and Babel 7
  * Tests rewrote using Jest
 
