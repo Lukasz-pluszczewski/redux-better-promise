@@ -82,7 +82,7 @@
     "workbox-webpack-plugin": "3.6.3"
   },
   "dependencies": {
-    "lodash": "4.17.11"
+    "lodash": "4.17.21"
   },
   "eslintConfig": {
     "extends": "react-app"
